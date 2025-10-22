@@ -4,8 +4,13 @@ PDF Merger GUI Tool
 A modern GUI application for merging PDF files using tkinter and PyPDF2.
 """
 
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+try:
+    import tkinter as tk
+    from tkinter import ttk, filedialog, messagebox
+except Exception as e:
+    print("tkinter is required but not installed.")
+    print("On Debian/Ubuntu: sudo apt-get update && sudo apt-get install -y python3-tk")
+    sys.exit(1)
 import os
 import sys
 from pathlib import Path
@@ -18,10 +23,20 @@ except ImportError:
     print("PyPDF2 not found. Please install it with: pip install PyPDF2")
     sys.exit(1)
 
+# Optional drag-and-drop support via tkinterdnd2
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD  # type: ignore
+    DND_AVAILABLE = True
+except Exception:
+    DND_AVAILABLE = False
+    DND_FILES = None  # type: ignore
+    TkinterDnD = None  # type: ignore
+
 
 class PDFMergerGUI:
-    def __init__(self, root):
+    def __init__(self, root, dnd_enabled: bool = False):
         self.root = root
+        self.dnd_enabled = dnd_enabled
         self.root.title("PDF Merger Tool")
         self.root.geometry("600x500")
         self.root.resizable(True, True)
@@ -76,9 +91,10 @@ class PDFMergerGUI:
         title_label.grid(row=0, column=0, pady=(0, 20), sticky=tk.W)
         
         # Instructions
-        instructions = ttk.Label(main_frame, 
-                                text="Select PDF files to merge. Drag and drop is supported.",
-                                font=('Arial', 10))
+        instructions_text = "Select PDF files to merge."
+        if self.dnd_enabled:
+            instructions_text += " Drag and drop is supported."
+        instructions = ttk.Label(main_frame, text=instructions_text, font=('Arial', 10))
         instructions.grid(row=1, column=0, pady=(0, 20), sticky=tk.W)
         
         # File selection frame
@@ -154,11 +170,13 @@ class PDFMergerGUI:
         self.status_label = ttk.Label(main_frame, textvariable=self.status_var)
         self.status_label.grid(row=6, column=0, sticky=tk.W)
         
-        # Configure drag and drop
+        # Configure drag and drop (if available)
         self.setup_drag_drop()
     
     def setup_drag_drop(self):
-        """Setup drag and drop functionality"""
+        """Setup drag and drop functionality if supported"""
+        if not self.dnd_enabled:
+            return
         def drop(event):
             files = self.root.tk.splitlist(event.data)
             pdf_files = [f for f in files if f.lower().endswith('.pdf')]
@@ -167,9 +185,18 @@ class PDFMergerGUI:
             else:
                 messagebox.showwarning("Invalid Files", "Please drop PDF files only.")
         
-        # Enable drag and drop
-        self.root.drop_target_register('DND_FILES')
-        self.root.dnd_bind('<<Drop>>', drop)
+        # Enable drag and drop on the file listbox for better UX
+        try:
+            self.file_listbox.drop_target_register(DND_FILES)  # type: ignore[arg-type]
+            self.file_listbox.dnd_bind('<<Drop>>', drop)
+        except Exception:
+            # As a fallback, attempt to bind at the root level
+            try:
+                self.root.drop_target_register(DND_FILES)  # type: ignore[arg-type]
+                self.root.dnd_bind('<<Drop>>', drop)
+            except Exception:
+                # If DnD setup fails, silently disable it
+                self.dnd_enabled = False
     
     def add_files(self):
         """Add PDF files through file dialog"""
@@ -307,8 +334,12 @@ class PDFMergerGUI:
 
 def main():
     """Main function to run the application"""
-    root = tk.Tk()
-    app = PDFMergerGUI(root)
+    # Use TkinterDnD.Tk when available to enable drag-and-drop
+    if DND_AVAILABLE:
+        root = TkinterDnD.Tk()  # type: ignore[assignment]
+    else:
+        root = tk.Tk()
+    app = PDFMergerGUI(root, dnd_enabled=DND_AVAILABLE)
     
     # Handle window closing
     def on_closing():
