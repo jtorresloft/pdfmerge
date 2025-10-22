@@ -13,6 +13,12 @@ import threading
 from typing import List, Optional
 
 try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+except ImportError:
+    print("tkinterdnd2 not found. Please install it with: pip install tkinterdnd2")
+    sys.exit(1)
+
+try:
     from PyPDF2 import PdfReader, PdfWriter
 except ImportError:
     print("PyPDF2 not found. Please install it with: pip install PyPDF2")
@@ -168,7 +174,7 @@ class PDFMergerGUI:
                 messagebox.showwarning("Invalid Files", "Please drop PDF files only.")
         
         # Enable drag and drop
-        self.root.drop_target_register('DND_FILES')
+        self.root.drop_target_register(DND_FILES)
         self.root.dnd_bind('<<Drop>>', drop)
     
     def add_files(self):
@@ -307,7 +313,7 @@ class PDFMergerGUI:
 
 def main():
     """Main function to run the application"""
-    root = tk.Tk()
+    root = TkinterDnD.Tk()
     app = PDFMergerGUI(root)
     
     # Handle window closing
