@@ -18,6 +18,14 @@ except ImportError:
     print("PyPDF2 not found. Please install it with: pip install PyPDF2")
     sys.exit(1)
 
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+except ImportError:
+    print("tkinterdnd2 not found. Please install it with: pip install tkinterdnd2")
+    print("Drag and drop functionality will be disabled.")
+    DND_FILES = None
+    TkinterDnD = None
+
 
 class PDFMergerGUI:
     def __init__(self, root):
@@ -76,8 +84,14 @@ class PDFMergerGUI:
         title_label.grid(row=0, column=0, pady=(0, 20), sticky=tk.W)
         
         # Instructions
+        drag_drop_text = "Select PDF files to merge."
+        if DND_FILES is not None and TkinterDnD is not None:
+            drag_drop_text += " Drag and drop is supported."
+        else:
+            drag_drop_text += " Use the 'Add PDFs' button to select files."
+        
         instructions = ttk.Label(main_frame, 
-                                text="Select PDF files to merge. Drag and drop is supported.",
+                                text=drag_drop_text,
                                 font=('Arial', 10))
         instructions.grid(row=1, column=0, pady=(0, 20), sticky=tk.W)
         
@@ -159,6 +173,10 @@ class PDFMergerGUI:
     
     def setup_drag_drop(self):
         """Setup drag and drop functionality"""
+        if DND_FILES is None or TkinterDnD is None:
+            # Drag and drop not available
+            return
+            
         def drop(event):
             files = self.root.tk.splitlist(event.data)
             pdf_files = [f for f in files if f.lower().endswith('.pdf')]
@@ -168,7 +186,7 @@ class PDFMergerGUI:
                 messagebox.showwarning("Invalid Files", "Please drop PDF files only.")
         
         # Enable drag and drop
-        self.root.drop_target_register('DND_FILES')
+        self.root.drop_target_register(DND_FILES)
         self.root.dnd_bind('<<Drop>>', drop)
     
     def add_files(self):
@@ -307,7 +325,12 @@ class PDFMergerGUI:
 
 def main():
     """Main function to run the application"""
-    root = tk.Tk()
+    # Use TkinterDnD if available, otherwise fall back to regular Tk
+    if TkinterDnD is not None:
+        root = TkinterDnD.Tk()
+    else:
+        root = tk.Tk()
+    
     app = PDFMergerGUI(root)
     
     # Handle window closing
